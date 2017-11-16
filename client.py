@@ -1,15 +1,9 @@
 import socket
-import time
 import threading
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 sock.connect(('localhost', 5550))
-sock.send(b'1')
-print(sock.recv(1024).decode())
-nickName = input('input your nickname: ')
-sock.send(nickName.encode())
-
 
 def sendThreadFunc():
     while True:
@@ -17,11 +11,15 @@ def sendThreadFunc():
             myword = input()
             sock.send(myword.encode())
             # print(sock.recv(1024).decode())
+
+            if myword.upper() == "KILL_SERVICE":
+                break
+
         except ConnectionAbortedError:
             print('Server closed this connection!')
         except ConnectionResetError:
-            print('Server is closed!')
-
+            print('Server is closed! Please close the window.')
+            pass
 
 def recvThreadFunc():
     while True:
@@ -35,7 +33,8 @@ def recvThreadFunc():
             print('Server closed this connection!')
 
         except ConnectionResetError:
-            print('Server is closed!')
+            print('Server is closed! Please close the window.')
+            pass
 
 
 th1 = threading.Thread(target=sendThreadFunc)
@@ -45,4 +44,4 @@ threads = [th1, th2]
 for t in threads:
     t.setDaemon(True)
     t.start()
-t.join()  
+t.join()
