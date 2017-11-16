@@ -8,13 +8,13 @@ sock.bind(('localhost', 5550))
 sock.listen(5)
 print('Server', socket.gethostbyname('localhost'), 'listening ...')
 
-mydict = dict()
-mylist = list()
+userdict = dict()
+userlist = list()
 
 
 # send 'whatToSay' to everyone except exceptNum
-def tellOthers(exceptNum, whatToSay):
-    for c in mylist:
+def broadcast(exceptNum, whatToSay):
+    for c in userlist:
         if c.fileno() != exceptNum:
             try:
                 c.send(whatToSay.encode())
@@ -24,24 +24,30 @@ def tellOthers(exceptNum, whatToSay):
 
 def subThreadIn(myconnection, connNumber):
     nickname = myconnection.recv(1024).decode()
-    mydict[myconnection.fileno()] = nickname
-    mylist.append(myconnection)
+    userdict[myconnection.fileno()] = nickname
+    welmsg = "Welcome to server, " + nickname + "! You can send message now!"
+    myconnection.send(welmsg.encode())
+    userlist.append(myconnection)
     print('connection', connNumber, ' has nickname :', nickname)
-    tellOthers(connNumber, '[Syetem info: ' + mydict[connNumber] + ' entered.]')
+    broadcast(connNumber, '[Syetem info: ' + userdict[connNumber] + ' entered.]')
     while True:
         try:
             recvedMsg = myconnection.recv(1024).decode()
             if recvedMsg:
-                print(mydict[connNumber], ':', recvedMsg)
-                tellOthers(connNumber, mydict[connNumber] + ' :' + recvedMsg)
+                print(userdict[connNumber], ':', recvedMsg)
+                broadcast(connNumber, userdict[connNumber] + ' :' + recvedMsg)
+            if recvedMsg == "HELO text":
+                myconnection.send(welmsg.encode())
+            elif recvedMsg == "KILL_SERVICE":
+                myconnection.send(welmsg.encode())
 
         except (OSError, ConnectionResetError):
             try:
-                mylist.remove(myconnection)
+                userlist.remove(myconnection)
             except:
                 pass
-            print(mydict[connNumber], 'exit, ', len(mylist), ' person left')
-            tellOthers(connNumber, '[Syetem info: ' + mydict[connNumber] + ' left.]')
+            print(userdict[connNumber], 'exit, ', len(userlist), ' person left')
+            broadcast(connNumber, '[Syetem info: ' + userdict[connNumber] + ' left.]')
             myconnection.close()
             return
 
@@ -51,17 +57,12 @@ while True:
     print('Accept a new connection', connection.getsockname(), connection.fileno())
     try:
         # connection.settimeout(5)
-        buf = connection.recv(1024).decode()
-        if buf == '1':
-            connection.send(b'welcome to server!')
+        connection.send(b"Please enter your nickname: ")
 
-            #create a new thread for this connect
-            mythread = threading.Thread(target=subThreadIn, args=(connection, connection.fileno()))
-            mythread.setDaemon(True)
-            mythread.start()
+        mythread = threading.Thread(target=subThreadIn, args=(connection, connection.fileno()))
+        mythread.setDaemon(True)
+        mythread.start()
 
-        else:
-            connection.send(b'please go out!')
-            connection.close()
-    except:
+    except Exception as e:
+        print(e.message)
         pass  
