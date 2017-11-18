@@ -25,7 +25,10 @@ def broadcast(exceptNum, whatToSay):
 def subThreadIn(myconnection, connNumber):
     nickname = myconnection.recv(1024).decode()
     userdict[myconnection.fileno()] = nickname
-    welmsg = "Welcome to server, " + nickname + "! You can send message now!"
+    ip = str(myconnection.getsockname()[0])
+    welmsg = 'Welcome to server, ' + nickname + '! You can send message now!'
+    feedmsg = "HELO text\nIP: " + ip + "\nPort: 5550\nStudentID: 17303493"
+    print(feedmsg)
     myconnection.send(welmsg.encode())
     userlist.append(myconnection)
     print('connection', connNumber, ' has nickname :', nickname)
@@ -37,16 +40,17 @@ def subThreadIn(myconnection, connNumber):
                 print(userdict[connNumber], ':', recvedMsg)
                 broadcast(connNumber, userdict[connNumber] + ' :' + recvedMsg)
             if recvedMsg == "HELO text":
-                myconnection.send(welmsg.encode())
+                myconnection.send(feedmsg.encode())
             elif recvedMsg == "KILL_SERVICE":
-                myconnection.send(welmsg.encode())
+                myconnection.send(b'Service terminated! Please close the window!')
+                myconnection.close()
 
         except (OSError, ConnectionResetError):
             try:
                 userlist.remove(myconnection)
             except:
                 pass
-            print(userdict[connNumber], 'exit, ', len(userlist), ' person left')
+            print(userdict[connNumber], 'exit, ', len(userlist), ' person left.')
             broadcast(connNumber, '[Syetem info: ' + userdict[connNumber] + ' left.]')
             myconnection.close()
             return
