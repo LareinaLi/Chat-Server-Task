@@ -55,16 +55,14 @@ def subThreadIn(myconnection, connNumber):
                 recvedMsg = myconnection.recv(1024).decode()
                 if recvedMsg:
                     smsg = 'CHAT: ' + roomname + '\nJOIN_ID: ' + str(connNumber) + '\nCLIENT_NAME: ' + userdict[connNumber] + '\nMESSAGE: ' + recvedMsg + '\n'
-                    #print(userdict[connNumber], ':', recvedMsg)
                     print(smsg)
                     bmsg = 'CHAT: ' + roomname + '\nCLIENT_NAME: ' + userdict[connNumber] + '\nMESSAGE: ' + recvedMsg + '\n'
+                    myconnection.send(bmsg.encode())
                     broadcast(connNumber, bmsg)
                 if recvedMsg == 'HELO text':
                     myconnection.send(helomsg.encode())
                 elif recvedMsg == 'KILL_SERVICE':
                     print('LEAVE_CHATROOM: ', str(roomdict[roomname]), '\nJOIN_ID: ', str(connNumber), '\nCLIENT_NAME: ', userdict[connNumber], '\n')
-                    #myconnection.send(b'Service terminated! Please close the window!\n')
-                    myconnection.send(leftmsg)
                     broadcast(connNumber, leftmsg)
                     myconnection.close()
     
@@ -73,9 +71,8 @@ def subThreadIn(myconnection, connNumber):
                     userlist.remove(myconnection)
                 except:
                     pass
-                print(leftmsg)
-                #print(userdict[connNumber], 'exit, ', len(userlist), ' person left.')
-                #broadcast(connNumber, '[Syetem info: ' + userdict[connNumber] + ' left.]\n')
+
+                print(termsg)
                 broadcast(connNumber,termsg)
                 myconnection.close()
                 return
@@ -83,7 +80,7 @@ def subThreadIn(myconnection, connNumber):
 
 while True:
     connection, addr = sock.accept()
-    #print('Accept a new connection', connection.getsockname(), connection.fileno())
+
     try:
         # connection.settimeout(5)
         connection.send(b"Please enter chatroom name: ")
