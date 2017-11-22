@@ -9,7 +9,8 @@ import re
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server = '10.62.0.116'
+server = 'localhost'
+#server = '10.62.0.116'
 
 sock.bind((server, 5550))
 
@@ -18,103 +19,123 @@ serverip = str(socket.gethostbyname(server))
 print('Server', serverip, 'listening ...')
 
 userdict = dict()
+userrefdict = dict()
 userlist = list()
 userid = 0
 
 roomdict = dict()
+roomrefdict = dict()
 roomlist = list()
 roomid = 0
 
+roomuser = dict()
 
+conlist = list()
+condict = dict()
 
 # send 'whatToSay' to everyone except exceptNum
-def broadcast(exceptNum, whatToSay):
-    for c in userlist:
-        if c.fileno() != exceptNum:
-            try:
-                c.send(whatToSay.encode())
-            except:
-                pass
+def broadcast(exceptNum, whatToSay, chatroomNum):
+    for con in conlist:
+        for c in roomuser[chatroomNum]:
+            if con.fileno() == condict[c] and con.fileno() != exceptNum:
+                try:
+                    con.send(whatToSay.encode())
+                except:
+                    pass
 
 def subThreadIn(myconnection, connNumber):
-    
-    helomsg = 'HELO text\nIP: ' + server + '\nPort: 5550\nStudentID: 17303493\n'
-    termsg = 'DISCONNECT: 0\nPORT: 0\nCLIENT_NAME: ' + userdict[connNumber] + '\n'
-        
-    recvedMsg = connection.recv(4086).decode()
-    
-    if recvedMsg == 'HELO text':
-        myconnection.send(helomsg.encode())
-    
-    elif recvedMsg == 'KILL_SERVICE':
-       # print('LEAVE_CHATROOM: ', str(roomdict[roomname]), '\nJOIN_ID: ', str(connNumber), '\nCLIENT_NAME: ', userdict[connNumber], '\n')
-       # broadcast(connNumber, leftmsg)
-        myconnection.close()
-        
-    else:
-        if re.match(r'JOIN_CHATROOM:', recvedMsg):
-            info = recvedMsg.split('\: |\n')
-            roomname = info[1]
-            nickname = info[7]
-            if roomname != None & nickname != None:
-                if roomname in roomlist:
-                    pass
-                else:
-                    roomlist.append(roomname)
-                    roomdict[roomname] = roomid + 1
-                if nickname in userdict:
-                    pass
-                else:
-                    userlist.append(nickname)
-                    userdict[nickname] = userid+1
-                joinmsg = 'JOINED_CHATROOM: ' + info[1] + '\nSERVER_IP: ' + serverip + '\nPORT: 5550\nROOM_REF: ' + str(roomdict[roomname]) + '\nJOIN_ID: ' + str(userdict[nickname]) + '\n'
-                myconnection.send(joinmsg.encode())
-                broadcast(connNumber, '[Syetem info: ' + userdict[connNumber] + ' entered.]\n')
-                
-        elif re.match(r'LEAVE_CHATROOM:', recvedMsg):
-            info = recvedMsg.split('\: |\n')
-            leftmsg = 'LEFT_CHATROOM: ' + str(roomdict[roomname]) + '\nJOIN_ID: ' + str(connNumber) + '\n'
+    conlist.append(myconnection)
+    while True:
+        try:
+            recvedMsg = connection.recv(4086).decode()
             
-        elif re.match(r'CHAT:', recvedMsg):
-            info = recvedMsg.split('\: |\n')
-    
-        
-        #userdict[myconnection.fileno()] = nickname
-        
-        ip = str(myconnection.getsockname()[0])
-
-                
-                
-        #print('JOIN_CHATROOM: ' + roomname + '\nCLIENT_IP: 0\nPORT: 0\nCLIENT_NAME: ', nickname, '\n')
-        #joinmsg = 'JOINED_CHATROOM: ' + roomname + '\nSERVER_IP: ' + serverip + '\nPORT: 5550\nROOM_REF: ' + str(roomdict[roomname]) + '\nJOIN_ID: ' + str(connNumber) + '\n'
-        
-
-        while True:
-            try:
-                recvedMsg = myconnection.recv(4086).decode()
-                if recvedMsg:
-                    smsg = 'CHAT: ' + roomname + '\nJOIN_ID: ' + str(connNumber) + '\nCLIENT_NAME: ' + userdict[connNumber] + '\nMESSAGE: ' + recvedMsg + '\n'
-                    #print(userdict[connNumber], ':', recvedMsg)
-                    print(smsg)
-                    bmsg = 'CHAT: ' + roomname + '\nCLIENT_NAME: ' + userdict[connNumber] + '\nMESSAGE: ' + recvedMsg + '\n'
-                    myconnection.send(bmsg.encode())
-                    broadcast(connNumber, bmsg)
-                if recvedMsg == 'HELO text':
-                    myconnection.send(helomsg.encode())
-                elif recvedMsg == 'KILL_SERVICE':
-                    print('LEAVE_CHATROOM: ', str(roomdict[roomname]), '\nJOIN_ID: ', str(connNumber), '\nCLIENT_NAME: ', userdict[connNumber], '\n')
-                    #myconnection.send(b'Service terminated! Please close the window!\n')
-                    #myconnection.send(leftmsg.encode())
-                    broadcast(connNumber, leftmsg)
-                    myconnection.close()
-    
-            except (OSError, ConnectionResetError):
-
-                print(termsg)
-                broadcast(connNumber,termsg)
+            print(recvedMsg)
+            
+            if recvedMsg == 'HELO text':
+                ip = str(myconnection.getsockname()[0])
+                helomsg = 'HELO text\nIP: ' + ip + '\nPort: 5550\nStudentID: 17303493\n'
+                myconnection.send(helomsg.encode())
+            
+            elif recvedMsg == 'KILL_SERVICE':
+                myconnection.send(b'Service is terminated.')
                 myconnection.close()
-                return
+               
+            else:
+                if re.match(r'JOIN_CHATROOM:', recvedMsg):
+                    info = recvedMsg.split('\\n',3)
+                    try:
+                        if re.match(r'CLIENT_IP', info[1]) and re.match(r'PORT', info[2]) and re.match(r'CLIENT_NAME', info[3]):
+                            roomname = info[0].split()[1]
+                            nickname = info[3].split()[1]
+                            print(roomname, nickname)
+                            if roomname != None and nickname != None:
+                                if roomname in roomlist:
+                                    pass
+                                else:
+                                    roomlist.append(roomname)
+                                    roomref = roomid + 1
+                                    roomuser[roomref] = []
+                                    roomdict[roomname] = roomref
+                                    roomrefdict[roomref] = roomname
+                                if nickname in userdict:
+                                    pass
+                                else:
+                                    userlist.append(nickname)
+                                    userref = userid + 1
+                                    userdict[nickname] = userref
+                                    userrefdict[userref] = nickname
+                                condict[userdict[nickname]] = myconnection.fileno()
+                                roomuser[roomdict[roomname]].append(userdict[nickname])
+                                joinmsg = 'JOINED_CHATROOM: ' + roomname + '\nSERVER_IP: ' + serverip + '\nPORT: 5550\nROOM_REF: ' + str(roomdict[roomname]) + '\nJOIN_ID: ' + str(userdict[nickname]) + '\n'
+                                myconnection.send(joinmsg.encode())
+                                broadcast(connNumber, '[Syetem info: ' + nickname + ' entered.]\n', roomdict[roomname])
 
+                    except:
+                        errormsg = 'ERROR_CODE:001\nERROR_DESCRIPTION: CANNOT JOIN THE CHATROOM!\n'
+                        myconnection.send(errormsg.encode())
+                        print(errormsg)
+                                                
+                elif re.match(r'LEAVE_CHATROOM:', recvedMsg):
+                    info = recvedMsg.split('\\n', 2)
+                    if re.match(r'JOIN_ID', info[1]) and re.match(r'CLIENT_NAME', info[2]):
+                        roomref = info[0].split()[1]
+                        userref = info[1].split()[1]
+                        if roomref in roomrefdict and userref in userrefdict:
+                            leftmsg = 'LEFT_CHATROOM: ' + roomref + '\nJOIN_ID: ' + userref + '\n'
+                            roomuser[roomref].remove(userref)
+                            myconnection.send(leftmsg.encode())
+                            broadcast(connNumber, '[Syetem info: ' + userrefdict[userref] + ' left.]\n', roomref)
+                        
+                elif re.match(r'DISCONNECT:', recvedMsg):
+                    info = recvedMsg.split('\\n', 2)
+                    if re.match(r'PORT', info[1]) and re.match(r'CLIENT_NAME', info[2]):
+                        username = info[2].split()[1]
+                        myconnection.send(b'Service is terminated.')
+                        for room in roomuser:
+                            if userdict[username] in roomuser[room]:
+                                broadcast(connNumber, '[Syetem info: ' + username + ' left.]\n', room)
+                        myconnection.close()
+                            
+                elif re.match(r'CHAT:', recvedMsg):
+                    info = recvedMsg.split('\\n', 3)
+                    if re.match(r'JOIN_ID', info[1]) and re.match(r'CLIENT_NAME', info[2]) and re.match(r'MESSAGE', info[3]):
+                        roomref = info[0].split()[1]
+                        userref = info[2].split()[1]
+                        username = info[2].split()[1]
+                        message = info[3].split()[1]
+                        if roomref in roomrefdict and userref in userrefdict:
+                            if userref in roomuser[roomref]:
+                                chatmsg = 'CHAT: ' + roomref + '\nCLIENT_NAME: '+ username + '\nMESSAGE: ' + message + '\n\n'
+                                myconnection.send(chatmsg.encode())
+                                broadcast(connNumber, chatmsg, roomref)
+                            else:
+                                myconnection.send(b'Sorry, you are not in this chatroom!')
+        except (OSError, ConnectionResetError):
+            try:
+                conlist.remove(myconnection)
+            except:
+                pass
+            return
 
 while True:
     connection, addr = sock.accept()
@@ -127,6 +148,5 @@ while True:
         mythread.start()
 
     except Exception as e:
-        errmsg = 'ERROR_CODE: \nERROR_DESCRIPTION: ' + str(e.message) + '\n'
-        print(errmsg)
+        print(e.message)
         pass  
