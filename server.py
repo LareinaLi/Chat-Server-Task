@@ -9,8 +9,8 @@ import re
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-server = 'localhost'
-#server = 10.62.0.116
+#server = 'localhost'
+server = '10.62.0.116'
 
 sock.bind((server, 5550))
 
@@ -51,19 +51,23 @@ def subThreadIn(myconnection, connNumber):
             
             print(recvedMsg)
             
-            if recvedMsg == 'HELO BASE_TEST':
+            # respond to HELO message
+            if re.match(r'HELO', recvedMsg):
                 ip = str(myconnection.getsockname()[0])
                 helomsg = 'HELO BASE_TEST\nIP: ' + ip + '\nPort: 5550\nStudentID: 17303493\n'
                 print(helomsg)
                 myconnection.send(helomsg.encode())
             
-            elif recvedMsg == 'KILL_SERVICE':
+            # respond to KILL_SERVICE message
+            elif re.match(r'KILL_SERVICE', recvedMsg):
                 print('Service is terminated.')
                 myconnection.send(b'Service is terminated.')
                 myconnection.close()
+                
                
             else:
-                if re.match(r'JOIN_CHATROOM:', recvedMsg):
+                # respond to JOIN CHATROOM message
+                if re.match(r'JOIN_CHATROOM', recvedMsg):
                     info = recvedMsg.split('\\n',3)
                     try:
                         if re.match(r'CLIENT_IP', info[1]) and re.match(r'PORT', info[2]) and re.match(r'CLIENT_NAME', info[3]):
@@ -100,8 +104,9 @@ def subThreadIn(myconnection, connNumber):
                         errormsg = 'ERROR_CODE:001\nERROR_DESCRIPTION: CANNOT JOIN THE CHATROOM!\n'
                         print(errormsg)
                         myconnection.send(errormsg.encode())
-                                                
-                elif re.match(r'LEAVE_CHATROOM:', recvedMsg):
+                
+                # respond to LEAVE CHATROOM message                                
+                elif re.match(r'LEAVE_CHATROOM', recvedMsg):
                     info = recvedMsg.split('\\n', 2)
                     if re.match(r'JOIN_ID', info[1]) and re.match(r'CLIENT_NAME', info[2]):
                         roomref = int(info[0].split()[1])
@@ -121,8 +126,9 @@ def subThreadIn(myconnection, connNumber):
                             wrongmsg = 'User ID: ' + str(userref) + ' or chatroomID: ' + str(roomref) + ' does not exist!\n'
                             print(wrongmsg)
                             myconnection.send(wrongmsg.encode())
-                        
-                elif re.match(r'DISCONNECT:', recvedMsg):
+                            
+                # respond to DISCONNECT message        
+                elif re.match(r'DISCONNECT', recvedMsg):
                     info = recvedMsg.split('\\n', 2)
                     if re.match(r'PORT', info[1]) and re.match(r'CLIENT_NAME', info[2]):
                         username = info[2].split()[1]
@@ -132,8 +138,9 @@ def subThreadIn(myconnection, connNumber):
                         for room in roomuser:
                             if userdict[username] in roomuser[room]:
                                 broadcast(connNumber, '[Syetem info: ' + username + ' left.]\n', room)
-                            
-                elif re.match(r'CHAT:', recvedMsg):
+                
+                # respond to CHAT message
+                elif re.match(r'CHAT', recvedMsg):
                     info = recvedMsg.split('\\n', 3)
                     if re.match(r'JOIN_ID', info[1]) and re.match(r'CLIENT_NAME', info[2]) and re.match(r'MESSAGE', info[3]):
                         roomref = int(info[0].split()[1])
@@ -162,18 +169,19 @@ def subThreadIn(myconnection, connNumber):
                     print('Wrong message type.\n')
                     myconnection.send(b'Wrong message type!\n')
                     
-        except (OSError, ConnectionResetError):
+        except Exception as e:
             try:
                 conlist.remove(myconnection)
             except:
                 pass
+            print(e.message)
             return
 
 while True:
     connection, addr = sock.accept()
   
     try:
-        connection.send(b'Connection Successful for host 10.62.0.116 on port 5550.\n')
+        #connection.send(b'Connection Successful for host 10.62.0.116 on port 5550.\n')
         
         mythread = threading.Thread(target=subThreadIn, args=(connection, connection.fileno()))
         mythread.setDaemon(True)
