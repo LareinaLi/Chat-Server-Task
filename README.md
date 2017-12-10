@@ -5,10 +5,12 @@ Student: Xuan Li
 
 Student ID: 17303493
 
+
 Excute with Python 3.6
 
 package used: threading, socket, re
 
+ 
 After deploying on SCSSNebula, run server.py. 
 
 client.py provide a method of testing the server.
