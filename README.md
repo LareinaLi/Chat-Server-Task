@@ -5,13 +5,13 @@ Student: Xuan Li
 
 Student ID: 17303493
 
+deploy on 10.62.0.116 port 5550
 
 Excute with Python 3.6
 
 package used: threading, socket, re
-
  
-After deploying on SCSSNebula, run server.py. 
+After deploying on SCSSNebula, run 'server.py'. 
 
 client.py provide a method of testing the server.
 
